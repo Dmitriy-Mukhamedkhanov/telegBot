@@ -20,3 +20,4 @@ def Game_stone_scissors_paper(name):
         return 'Проиграл'
     elif name == 'бумага' and data == 'бумага':
         return 'ничья'
+

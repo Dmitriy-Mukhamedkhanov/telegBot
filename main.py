@@ -1,3 +1,4 @@
+
 import telebot
 import dictionary
 from telebot import types
@@ -6,19 +7,16 @@ import time
 import csv
 import Game
 
-from config import TOTAL_WIN, TOTAL_DRAW, TOTAL_LOSE, TOTAL_WIN_ADMIN, TOTAL_DRAW_ADMIN, TOTAL_LOSE_ADMIN, ID,\
+from config import TOTAL_WIN, TOTAL_DRAW, TOTAL_LOSE, TOTAL_WIN_ADMIN, TOTAL_DRAW_ADMIN, TOTAL_LOSE_ADMIN, ID_ADMIN,\
     dictionary_total, API_TOKEN
-
 
 bot = telebot.TeleBot(API_TOKEN)
 
-
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    print(message.from_user.id)
 
-    if message.from_user.id == ID:
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True) # Создание клавы
+    if message.from_user.id == ID_ADMIN:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)  # Создание клавы
         markup.row('Поэзия', 'Игра')
         markup.row('ТОП-игроков')
         bot.reply_to(message, "Howdy, how are you doing?",reply_markup=markup)
@@ -36,12 +34,15 @@ def start_message(message):
         bot.send_message(message.from_user.id, name_dic[message.text])
     elif message.text == "Что делать?":\
         bot.send_message(message.from_user.id, "Напиши что-нибудь?")
-    elif message.text == "Поэзия":\
-        bot.send_message(message.from_user.id, send_welcome(message))
-    elif message.text == "Игра" :\
-        bot.send_message(message.from_user.id, send_Game(message))
-    elif message.text == "ТОП-игроков" :\
-        bot.send_message(message.from_user.id, top_players(message))
+    elif message.text == "Поэзия": \
+        send_welcome(message)
+        # bot.send_message(message.from_user.id, send_welcome(message))
+    elif message.text == "Игра" : \
+        send_Game(message)
+        # bot.send_message(message.from_user.id, send_Game(message))
+    elif message.text == "ТОП-игроков" : \
+        top_players(message)
+        # bot.send_message(message.from_user.id, top_players(message))
     else:
         print(message.from_user.id)
         bot.send_message(message.chat.id, f"я не знаю что ответить на: {message.text} ")
@@ -51,9 +52,9 @@ def start_message(message):
                                           "для поэзии набери команду /poetry")
 
 
-@bot.message_handler(ccommands=['Game']) # Если сообщение = Поэзия, то ...
+@bot.message_handler(ccommands=['Game'])  # Если сообщение = Поэзия, то ...
 def send_Game(message):
-    if message.from_user.id == ID:
+    if message.from_user.id == ID_ADMIN:
         markup_in = types.InlineKeyboardMarkup()  # Создание клавы инлайн
         button1 = types.InlineKeyboardButton('🤜', callback_data='button1')
         button2 = types.InlineKeyboardButton('✂️', callback_data='button2')
@@ -76,12 +77,13 @@ def send_Game(message):
 # Обработчик нажатий на кнопки
 @bot.callback_query_handler(func=lambda call: True) # Привязка кнопок btn1 и btn2
 def callback_inline(call):
-    global TOTAL_WIN
+    global TOTAL_WIN, total
     global TOTAL_DRAW
     global TOTAL_LOSE
     global TOTAL_WIN_ADMIN
     global TOTAL_DRAW_ADMIN
     global TOTAL_LOSE_ADMIN
+    global dictionary_total
 
     if call.data == 'btn1': # data это ???????????
         name_poetry = dictionary.POE()
@@ -123,30 +125,46 @@ def callback_inline(call):
     elif call.data == 'ТОП-игроков':
         top_players(call.message)
 
-    if call.message.chat.id == ID: # считает только Админа
+
+    if call.from_user.id == ID_ADMIN:
+        dictionary_total[call.from_user.id] = {}
+        # print(call.message.chat.id)
+        # print(call.from_user.id)
+        # print(ID_ADMIN)
         if total == 'Победа':
-            TOTAL_WIN_ADMIN += 1
+            if call.from_user.id not in dictionary_total:
+                TOTAL_WIN = 0
+                dictionary_total[call.from_user.id]['Победа'] = TOTAL_WIN
+            else:
+                TOTAL_WIN += 1
+                dictionary_total[call.from_user.id]['Победа'] = TOTAL_WIN
         elif total == 'ничья':
-            TOTAL_DRAW_ADMIN += 1
+            if call.from_user.id not in dictionary_total:
+                TOTAL_DRAW = 0
+                dictionary_total[call.from_user.id]['ничья'] = TOTAL_DRAW
+            else:
+                TOTAL_DRAW += 1
+                dictionary_total[call.from_user.id]['ничья'] = TOTAL_DRAW
         elif total == 'Проиграл':
-            TOTAL_LOSE_ADMIN += 1
-        general_total_admin = TOTAL_WIN_ADMIN + TOTAL_DRAW_ADMIN + TOTAL_LOSE_ADMIN
-        bot.send_message(call.message.chat.id, f'побед: {TOTAL_WIN_ADMIN}')
-        bot.send_message(call.message.chat.id, f'ничьих: {TOTAL_DRAW_ADMIN}')
-        bot.send_message(call.message.chat.id, f'проиграно: {TOTAL_LOSE_ADMIN}')
-        bot.send_message(call.message.chat.id, f'всего игр: {general_total_admin}')
+            if call.from_user.id not in dictionary_total:
+                TOTAL_LOSE = 0
+                dictionary_total[call.from_user.id]['Проиграл'] = TOTAL_LOSE
+            else:
+                TOTAL_LOSE += 1
+                dictionary_total[call.from_user.id]['Проиграл'] = TOTAL_LOSE
     else:
-        if total == 'Победа': # считает пользователей
+        if total == 'Победа':
             TOTAL_WIN += 1
+            dictionary_total[call.message.chat.id]['Победа'] = TOTAL_WIN
         elif total == 'ничья':
             TOTAL_DRAW += 1
+            dictionary_total[call.message.chat.id]['ничья'] = TOTAL_DRAW
         elif total == 'Проиграл':
             TOTAL_LOSE += 1
-        general_total = TOTAL_WIN + TOTAL_DRAW + TOTAL_LOSE
-        bot.send_message(call.message.chat.id, f'побед: {TOTAL_WIN}')
-        bot.send_message(call.message.chat.id, f'ничьих: {TOTAL_DRAW}')
-        bot.send_message(call.message.chat.id, f'проиграно: {TOTAL_LOSE}')
-        bot.send_message(call.message.chat.id, f'всего игр: {general_total}')
+            dictionary_total[call.message.chat.id] ['Проиграл'] = TOTAL_LOSE
+
+    print(call.message.from_user.id) # Что это ???????
+
 
 
 def top_players(message):
@@ -158,26 +176,17 @@ def top_players(message):
     bot.reply_to(message, id_user)
     bot.reply_to(message, name_user)
     bot.reply_to(message, player_name)
-    bot.send_message(message.from_user.id, TOTAL_WIN) # количество побед пользователей
 
-    if message.from_user.id == ID:
-        dictionary_total[id_user] = {player_name:TOTAL_WIN_ADMIN}
-    else:
-        dictionary_total[id_user] = {message.from_user.first_name:TOTAL_WIN}
+    print('Словарь')
+    print(dictionary_total[id_user])
 
-    for i in dictionary_total:
-        bot.send_message(message.chat.id, f"{list(dictionary_total[i].keys())[0]} побед: {dictionary_total[i][player_name]}")
-        bot.send_message(message.chat.id, f"{dictionary_total}")
-    save_data(dictionary_total,player_name)
 
-def save_data(dictionary_total,player_name):
+    save_data(dictionary_total,id_user)
+
+def save_data(dictionary_total, id_user):
     with open('filename.csv','w',newline='') as file:
         writer = csv.writer(file)
-        for i in dictionary_total:
-            DIC = f"{list(dictionary_total[i].keys())[0]} побед: {dictionary_total[i][player_name]}"
-
-            writer.writerow(DIC)
-    print(dictionary_total)
+        writer.writerow(dictionary_total.items())
 
 
 
